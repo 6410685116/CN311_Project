@@ -7,7 +7,7 @@ import java.net.Socket;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
-public class RPS_Client_GUI extends JFrame {
+public class RPS_Client extends JFrame {
     private JTextField nameField;
     private JButton connectButton;
     private JComboBox<String> modeComboBox;
@@ -17,7 +17,7 @@ public class RPS_Client_GUI extends JFrame {
     private BufferedWriter out;
     private Socket socket;
 
-    public RPS_Client_GUI() {
+    public RPS_Client() {
         setTitle("Rock-Paper-Scissors Client");
         setSize(400, 300);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -131,7 +131,7 @@ public class RPS_Client_GUI extends JFrame {
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            RPS_Client_GUI clientGUI = new RPS_Client_GUI();
+            RPS_Client clientGUI = new RPS_Client();
             clientGUI.setVisible(true);
         });
     }
