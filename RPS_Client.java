@@ -42,10 +42,11 @@ public class RPS_Client extends JFrame {
         add(new JScrollPane(gameLog), BorderLayout.CENTER);
 
         JPanel buttonPanel = new JPanel(new GridLayout(1, 4));
-        rockButton = new JButton("ROCK");
-        paperButton = new JButton("PAPER");
-        scissorsButton = new JButton("SCISSORS");
-        quitButton = new JButton("QUIT");
+
+        rockButton = new JButton(resizeIcon("images/rock.png", 70, 70));
+        paperButton = new JButton(resizeIcon("images/paper.png", 70, 70));
+        scissorsButton = new JButton(resizeIcon("images/scissors.png", 70, 70));
+        quitButton = new JButton(resizeIcon("images/quit.png", 70, 70));
 
         buttonPanel.add(rockButton);
         buttonPanel.add(paperButton);
@@ -59,6 +60,13 @@ public class RPS_Client extends JFrame {
         paperButton.addActionListener(new MoveButtonListener("PAPER"));
         scissorsButton.addActionListener(new MoveButtonListener("SCISSORS"));
         quitButton.addActionListener(new MoveButtonListener("Q"));
+    }
+
+    private ImageIcon resizeIcon(String path, int width, int height) {
+        ImageIcon icon = new ImageIcon(path);
+        Image img = icon.getImage();
+        Image resizedImage = img.getScaledInstance(width, height, Image.SCALE_SMOOTH);
+        return new ImageIcon(resizedImage);
     }
 
     private class ConnectButtonListener implements ActionListener {

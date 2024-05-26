@@ -1,30 +1,108 @@
 import java.io.*;
 import java.net.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import javax.swing.*;
 import java.util.ArrayList;
 import java.util.Random;
-import java.util.Scanner;
 
-public class RPS_Sever {
+public class RPS_Server extends JFrame {
     private static ArrayList<MultiplayerRoom> rooms = new ArrayList<>();
+    private ServerSocket serverSocket;
+    private boolean running = false;
+    private JButton toggleButton;
+    private JTextField portField;
+    private JTextArea logArea;
+    private Thread serverThread;
 
-    public static void main(String[] args) throws IOException {
-        // Get port number from the user
-        System.out.print("Enter port number: ");
-        Scanner scan = new Scanner(System.in);
-        int portNumber = scan.nextInt();
+    public RPS_Server() {
+        setTitle("Rock-Paper-Scissors Server");
+        setSize(500, 400);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+        setLayout(new BorderLayout());
 
-        // Create server socket and start listening on the given port
-        ServerSocket serverSocket = new ServerSocket(portNumber);
-        System.out.println("Server started and listening to port " + portNumber);
+        JPanel controlPanel = new JPanel();
+        controlPanel.setLayout(new BoxLayout(controlPanel, BoxLayout.Y_AXIS));
 
-        // Continuously accept new client connections
-        while (true) {
-            Socket clientSocket = serverSocket.accept();
-            new Thread(new ClientHandler(clientSocket)).start();
+        controlPanel.add(new JLabel("Port Number:"));
+        portField = new JTextField(5);  
+        portField.setMaximumSize(new Dimension(300, 30));
+        controlPanel.add(portField);
+        toggleButton = new JButton("Start Server");
+
+        toggleButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                toggleServer();
+            }
+        });
+
+        controlPanel.add(toggleButton);
+
+        add(controlPanel, BorderLayout.WEST);
+
+        logArea = new JTextArea();
+        logArea.setEditable(false);
+        add(new JScrollPane(logArea), BorderLayout.CENTER);
+    }
+
+    private void toggleServer() {
+        if (running) {
+            stopServer();
+        } else {
+            startServer();
         }
     }
 
-    // Handles client connections
+    private void startServer() {
+        try {
+            int portNumber = Integer.parseInt(portField.getText());
+            serverSocket = new ServerSocket(portNumber);
+            running = true;
+            toggleButton.setText("Stop Server");
+            logArea.append("Server started and listening on port " + portNumber + "\n");
+
+            serverThread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    while (running) {
+                        try {
+                            Socket clientSocket = serverSocket.accept();
+                            new Thread(new ClientHandler(clientSocket)).start();
+                        } catch (IOException e) {
+                            if (running) {
+                                logArea.append("Error accepting connection: " + e.getMessage() + "\n");
+                            }
+                        }
+                    }
+                }
+            });
+            serverThread.start();
+        } catch (NumberFormatException e) {
+            logArea.append("Invalid port number.\n");
+        } catch (IOException e) {
+            logArea.append("Error starting server: " + e.getMessage() + "\n");
+        }
+    }
+
+    private void stopServer() {
+        running = false;
+        try {
+            if (serverSocket != null) {
+                serverSocket.close();
+            }
+            if (serverThread != null) {
+                serverThread.join();
+            }
+            toggleButton.setText("Start Server");
+            logArea.append("Server stopped.\n");
+        } catch (IOException | InterruptedException e) {
+            logArea.append("Error stopping server: " + e.getMessage() + "\n");
+        }
+    }
+
     private static class ClientHandler implements Runnable {
         private Socket clientSocket;
         private BufferedReader in;
@@ -40,14 +118,7 @@ public class RPS_Sever {
                 in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                 out = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
 
-                // Get player name
-                // out.write("Enter your name: ");
-                // out.flush();
                 String playerName = in.readLine();
-
-                // Get game mode choice
-                // out.write("Choose game mode (1: Play with Bot, 2: Play with another Player): ");
-                // out.flush();
                 String mode = in.readLine();
 
                 if ("1".equals(mode)) {
@@ -60,14 +131,11 @@ public class RPS_Sever {
             }
         }
 
-        // Handles gameplay against the bot
         private void playWithBot(String playerName) throws IOException {
             String[] choices = {"ROCK", "PAPER", "SCISSORS"};
             Random random = new Random();
 
             while (true) {
-                // out.write("Enter your move (ROCK, PAPER, SCISSORS) or Q to quit: ");
-                // out.flush();
                 String playerMove = in.readLine().toUpperCase();
 
                 if ("Q".equalsIgnoreCase(playerMove)) {
@@ -85,7 +153,6 @@ public class RPS_Sever {
             }
         }
 
-        // Handles joining or creating a multiplayer game
         private void joinMultiplayerGame(String playerName) throws IOException {
             MultiplayerRoom availableRoom = null;
             for (MultiplayerRoom room : rooms) {
@@ -103,7 +170,6 @@ public class RPS_Sever {
             availableRoom.addPlayer(clientSocket, playerName);
         }
 
-        // Determines the winner of a Rock-Paper-Scissors round
         private String determineWinner(String move1, String move2) {
             if (move1.equalsIgnoreCase(move2)) {
                 return "It's a tie!";
@@ -117,7 +183,6 @@ public class RPS_Sever {
         }
     }
 
-    // Manages a multiplayer game room
     private static class MultiplayerRoom {
         private Socket player1Socket;
         private String player1Name;
@@ -128,7 +193,6 @@ public class RPS_Sever {
         private BufferedReader player2In;
         private BufferedWriter player2Out;
 
-        // Adds a player to the room
         public synchronized void addPlayer(Socket playerSocket, String playerName) throws IOException {
             if (player1Socket == null) {
                 player1Socket = playerSocket;
@@ -137,7 +201,7 @@ public class RPS_Sever {
                 player1Out = new BufferedWriter(new OutputStreamWriter(player1Socket.getOutputStream()));
                 player1Out.write("Waiting for another player to join...\n");
                 player1Out.flush();
-            } else {
+            } else { 
                 player2Socket = playerSocket;
                 player2Name = playerName;
                 player2In = new BufferedReader(new InputStreamReader(player2Socket.getInputStream()));
@@ -149,27 +213,19 @@ public class RPS_Sever {
             }
         }
 
-        // Checks if the room is waiting for a second player
         public boolean isWaitingForPlayer() {
             return player2Socket == null;
         }
 
-        // Starts the multiplayer game
-// Inside the MultiplayerRoom class
         private void startGame() {
             try {
-                player1Out.write("Another player has joined. Let's start!\n");
+                player1Out.write( player2Name + " has joined. Let's start!\n");
                 player1Out.flush();
-                player2Out.write("Let's start!\n");
+                player2Out.write("play with " + player1Name + ". Let's start!\n");
                 player2Out.flush();
 
                 while (true) {
-                    // player1Out.write("Enter your move (ROCK, PAPER, SCISSORS) or Q to quit: ");
-                    // player1Out.flush();
                     String player1Move = player1In.readLine().toUpperCase();
-
-                    // player2Out.write("Enter your move (ROCK, PAPER, SCISSORS) or Q to quit: ");
-                    // player2Out.flush();
                     String player2Move = player2In.readLine().toUpperCase();
 
                     if ("Q".equalsIgnoreCase(player1Move) || "Q".equalsIgnoreCase(player2Move)) {
@@ -201,7 +257,6 @@ public class RPS_Sever {
         }
 
 
-        // Determines the winner of a Rock-Paper-Scissors round
         private String determineWinner(String move1, String move2) {
             if (move1.equalsIgnoreCase(move2)) {
                 return "It's a tie!";
@@ -214,8 +269,11 @@ public class RPS_Sever {
             }
         }
     }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            RPS_Server serverGUI = new RPS_Server();
+            serverGUI.setVisible(true);
+        });
+    }
 }
-
-
-
-
